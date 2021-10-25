@@ -692,7 +692,7 @@ char *unicode_to_ansi_alloc( SQLWCHAR *str, SQLINTEGER len, DMHDBC connection, i
 
     if ( len == SQL_NTS )
     {
-        len = wide_strlen( str ) + 1;
+        len = wide_strlen( str );
     }
 
     aptr = malloc(( len * 4 ) + 1 );       /* There may be UTF8 */
@@ -1223,7 +1223,7 @@ char * __iptr_as_string( SQLCHAR *s, SQLINTEGER *ptr )
 {
     if ( ptr )
     {
-        sprintf((char*) s, "%p -> %d", (void*)ptr, (int)*ptr );
+        sprintf((char*) s, "%p -> %ld (%d bits)", (void*)ptr, (long)*ptr, (int)sizeof( SQLINTEGER ) * 8 );
     }
     else
     {
@@ -1237,7 +1237,7 @@ char * __ptr_as_string( SQLCHAR *s, SQLLEN *ptr )
 {
     if ( ptr )
     {
-        sprintf((char*) s, "%p -> %d", (void*)ptr, (int)*ptr );
+        sprintf((char*) s, "%p -> %ld (%d bits)", (void*)ptr, (long)*ptr, (int)sizeof( SQLLEN ) * 8 );
     }
     else
     {
@@ -4600,7 +4600,9 @@ void extract_diag_error_w( int htype,
         if ( SQL_SUCCEEDED( ret ))
         {
             ERROR *e = malloc( sizeof( ERROR ));
+#ifndef STRICT_ODBC_ERROR
             SQLWCHAR *tmp;
+#endif
 
             /* 
              * make sure we are truncated in the right place
@@ -4836,7 +4838,9 @@ void extract_sql_error_w( DRV_SQLHANDLE henv,
 
         if ( SQL_SUCCEEDED( ret ))
         {
+#ifndef STRICT_ODBC_ERROR
             SQLWCHAR *tmp;
+#endif
 
             /*
              * add to the lists, SQLError list first
@@ -4938,47 +4942,25 @@ void extract_error_from_driver( EHEAD * error_handle,
         hstmt_drv = handle_diag_extract;
     }
 
-    if ( hdbc->unicode_driver )
+    /* If we have the W functions may as well use them */
+
+    if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
+        CHECK_SQLGETDIAGRECW( hdbc ))
     {
-        if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
-            CHECK_SQLGETDIAGRECW( hdbc ))
-        {
-            extractdiagfunc = extract_diag_error_w;
-        }
-        else if ( CHECK_SQLERRORW( hdbc ))
-        {
-            extracterrorfunc = extract_sql_error_w;
-        }
-        else if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
-                 CHECK_SQLGETDIAGREC( hdbc ))
-        {
-            extractdiagfunc = extract_diag_error;
-        }
-        else if ( CHECK_SQLERROR( hdbc ))
-        {
-            extracterrorfunc = extract_sql_error;
-        }
+        extractdiagfunc = extract_diag_error_w;
     }
-    else
+    else if ( CHECK_SQLERRORW( hdbc ))
     {
-        if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
-            CHECK_SQLGETDIAGREC( hdbc ))
-        {
-            extractdiagfunc = extract_diag_error;
-        }
-        else if ( CHECK_SQLERROR( hdbc ))
-        {
-            extracterrorfunc = extract_sql_error;
-        }
-        else if ( CHECK_SQLGETDIAGFIELDW( hdbc ) &&
-                 CHECK_SQLGETDIAGRECW( hdbc ))
-        {
-            extractdiagfunc = extract_diag_error_w;
-        }
-        else if ( CHECK_SQLERRORW( hdbc ))
-        {
-            extracterrorfunc = extract_sql_error_w;
-        }
+        extracterrorfunc = extract_sql_error_w;
+    }
+    else if ( CHECK_SQLGETDIAGFIELD( hdbc ) &&
+             CHECK_SQLGETDIAGREC( hdbc ))
+    {
+        extractdiagfunc = extract_diag_error;
+    }
+    else if ( CHECK_SQLERROR( hdbc ))
+    {
+        extracterrorfunc = extract_sql_error;
     }
 
     if ( extractdiagfunc )
@@ -5005,7 +4987,6 @@ void extract_error_from_driver( EHEAD * error_handle,
             ERROR_HY000, "Driver returned SQL_ERROR or SQL_SUCCESS_WITH_INFO but no error reporting API found",
             hdbc->environment->requested_version );
     }
-
 }
 
 

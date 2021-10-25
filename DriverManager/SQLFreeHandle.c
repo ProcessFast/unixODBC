@@ -501,7 +501,6 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
         {
             DMHDESC descriptor = (DMHDESC)handle;
             DMHDBC connection;
-            SQLRETURN ret;
 
             /*
              * check descriptor
@@ -562,7 +561,7 @@ SQLRETURN __SQLFreeHandle( SQLSMALLINT handle_type,
             }
             else
             {
-                ret = SQLFREEHANDLE( connection,
+                SQLFREEHANDLE( connection,
                         handle_type,
                         descriptor -> driver_desc );
             }

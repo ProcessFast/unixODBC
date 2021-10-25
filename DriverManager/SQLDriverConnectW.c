@@ -423,7 +423,7 @@ SQLRETURN SQLDriverConnectW(
 			}
 			else 
 			{
-                unicode_to_ansi_copy( returned_dsn, sizeof( returned_dsn ), returned_wdsn, SQL_NTS, connection, NULL );
+                unicode_to_ansi_copy((char*) returned_dsn, sizeof( returned_dsn ), returned_wdsn, SQL_NTS, connection, NULL );
 				prefix = returned_dsn;
 				target = (SQLCHAR*)strchr( (char*)returned_dsn, '=' );
 				if ( target ) 
@@ -596,9 +596,7 @@ SQLRETURN SQLDriverConnectW(
     {
         if ( CHECK_SQLSETCONNECTATTR( connection ))
         {
-            int lret;
-                
-            lret = SQLSETCONNECTATTR( connection,
+            SQLSETCONNECTATTR( connection,
                     connection -> driver_dbc,
                     SQL_ATTR_ANSI_APP,
                     SQL_AA_FALSE,
@@ -711,20 +709,21 @@ SQLRETURN SQLDriverConnectW(
     else
     {
         char *in_str, *out_str;
-        int len;
+        int in_len, len;
 
         if ( conn_str_in )
         {
             if ( len_conn_str_in == SQL_NTS )
             {
-                len = wide_strlen( conn_str_in ) + sizeof( SQLWCHAR );
+                len = wide_strlen( conn_str_in );
             }
             else
             {
-                len = len_conn_str_in + sizeof( SQLWCHAR );
+                len = len_conn_str_in;
             }
-            in_str = malloc( len );
-            unicode_to_ansi_copy( in_str, len, conn_str_in, len, connection, NULL );
+            in_len = len + 1;
+            in_str = malloc( in_len );
+            unicode_to_ansi_copy( in_str, in_len, conn_str_in, len, connection, NULL );
         }
         else
         {
